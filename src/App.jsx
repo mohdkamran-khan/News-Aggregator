@@ -16,40 +16,42 @@ function App() {
   const [error, setError] = useState(null);
   const [showBookmarks, setShowBookmarks] = useState(false);
 
-  const API_KEY = import.meta.env.VITE_NEWS_API_KEY;
+const fetchNews = async () => {
+  const cacheKey = `news-${category}-${query}`;
+  const cached = localStorage.getItem(cacheKey);
 
-  const fetchNews = async () => {
-    const cacheKey = `news-${category}-${query}`;
-    const cached = localStorage.getItem(cacheKey);
+  if (cached) {
+    setArticles(JSON.parse(cached));
+    return;
+  }
 
-    if (cached) {
-      setArticles(JSON.parse(cached));
-      return;
+  setLoading(true);
+  setError(null);
+
+  try {
+    let url;
+
+    // Use serverless proxy instead of NewsAPI
+    if (query && query.trim() !== "") {
+      url = `/api/news?q=${query}`;
+    } else {
+      url = `/api/news?category=${category}`;
     }
 
-    setLoading(true);
-    setError(null);
+    const res = await axios.get(url);
 
-    try {
-      let url;
+    const articles = res.data.articles || [];
 
-      if (query) {
-        url = `https://newsapi.org/v2/everything?q=${query}&pageSize=20&apiKey=${API_KEY}`;
-      } else {
-        url = `https://newsapi.org/v2/top-headlines?country=us&category=${category}&pageSize=20&apiKey=${API_KEY}`;
-      }
+    setArticles(articles);
 
-      const res = await axios.get(url);
+    localStorage.setItem(cacheKey, JSON.stringify(articles));
 
-      setArticles(res.data.articles);
-
-      localStorage.setItem(cacheKey, JSON.stringify(res.data.articles));
-    } catch (err) {
-      setError("Failed to fetch news.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (err) {
+    setError("Failed to fetch news.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     if (!showBookmarks) fetchNews();
